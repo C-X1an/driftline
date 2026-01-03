@@ -1,7 +1,13 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Float
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    Float,
+    String,          
+)
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -49,4 +55,10 @@ class DriftSignal(Base):
     risk_assessments = relationship(
         "RiskAssessment",
         back_populates="drift_signal",
+    )
+
+    drift_fingerprint: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        index=True,
     )

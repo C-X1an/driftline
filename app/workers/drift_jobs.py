@@ -102,6 +102,7 @@ def compute_and_store_drift(db: Session, source_id):
         source_id=source_id,
         baseline_snapshot_id=baseline.id,
         current_snapshot_id=current.id,
+        drift_fingerprint=fingerprint,   # ← ADD THIS
         component_count=len(components),
         magnitude=magnitude,
         components=components,
