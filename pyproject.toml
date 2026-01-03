@@ -1,0 +1,18 @@
+[project]
+name = "driftline"
+version = "0.1.0"
+description = "Operational risk intelligence that detects when system reality drifts from assumptions over time"
+requires-python = ">=3.12"
+
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "sqlalchemy>=2.0",
+  "asyncpg",
+  "psycopg[binary]",
+  "pydantic>=2.0",
+  "python-dotenv"
+]
+
+[tool.ruff]
+line-length = 100
