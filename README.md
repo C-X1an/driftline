@@ -7,6 +7,12 @@ and attaches deterministic explanations that operators can trust.
 
 ---
 
+📖 **New to Driftline?**  
+Start with the [Demo Walkthrough](docs/DEMO.md) to see how Driftline models
+configuration drift as operational risk over time.
+
+---
+
 ## Philosophy
 
 Driftline is built on a simple belief:
@@ -15,6 +21,17 @@ Driftline is built on a simple belief:
 
 Most operational tools react to changes.
 Driftline models risk.
+
+---
+
+## Who Driftline Is For
+
+Driftline is designed for:
+- engineers operating real systems
+- teams dealing with long-lived configuration drift
+- environments where alerts are cheap but understanding is expensive
+
+It is not designed for toy demos or one-off change tracking.
 
 ---
 
