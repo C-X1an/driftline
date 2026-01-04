@@ -1,44 +1,94 @@
 # Driftline
 
-**Driftline** is an operational risk intelligence system that detects when system reality drifts from documented assumptions over time.
+Operational risk intelligence for configuration drift.
 
-Most system failures aren’t caused by sudden changes — they happen because small deviations accumulate silently. Driftline continuously models system state over time and surfaces risk signals before those deviations turn into incidents.
-
----
-
-## What Driftline Is
-
-- A **stateful**, time-aware system
-- Focused on **risk**, not raw change
-- Built around **historical baselines**, not event noise
-- Designed for small teams running real systems
+Driftline detects configuration drift, models it as incidents,
+and attaches deterministic explanations that operators can trust.
 
 ---
 
-## What Driftline Is Not
+## Philosophy
 
-- Not a change summarizer
-- Not a notification spammer
-- Not a PR or CI bot
-- Not a compliance checklist
-- Not an AI wrapper
+Driftline is built on a simple belief:
+
+> Configuration drift is a state that accumulates over time, not an event that happens once.
+
+Most operational tools react to changes.
+Driftline models risk.
 
 ---
 
-## Core Concept
+## What Problem Does This Solve?
 
-Driftline does not report *what changed*.  
-Driftline evaluates **risk by comparing system state over time**.
+Configuration drift rarely causes immediate failures.
+Instead, small deviations accumulate silently until systems behave in
+unexpected and fragile ways.
+
+Most tools surface raw changes or alerts.
+Driftline models drift as operational risk that persists over time.
+
+---
+
+## How Driftline Works (High Level)
+
+- Capture normalized system snapshots over time
+- Define explicit baselines as reference points
+- Detect drift relative to the active baseline
+- Assess operational risk
+- Create incidents with clear lifecycles
+- Attach deterministic, reusable explanations
+
+---
+
+## Why Deterministic Explanations Matter
+
+Operators need consistent reasoning, not creative output.
+If the same drift produces different explanations, trust erodes.
+
+Driftline explanations are deterministic and idempotent by design.
+
+---
+
+## API Overview
+
+Driftline exposes endpoints for:
+- incident listing and filtering
+- incident timelines
+- explanation metrics
+- baseline reset operations
+
+The API is designed to be composable with existing operational tooling.
+
+---
+
+## Why This Matters in Production
+
+In real systems, configuration drift is inevitable.
+What matters is not preventing drift, but understanding when it becomes risk.
+
+Driftline helps teams:
+- detect drift early without alert fatigue
+- reason about operational impact, not just change
+- preserve historical context across incidents
+- make intentional baseline decisions without losing auditability
+
+---
+
+## Design Principles
+
+Driftline is built around a small set of non-negotiable principles:
+
+- Drift is a state, not an event
+- Risk matters more than raw change
+- Deterministic explanations build trust
+- Incidents must persist across time
+- Baselines are explicit operator decisions
+
+These principles guide every architectural decision in the system.
 
 ---
 
 ## Status
 
-Driftline is under active development.  
-The current focus is building the core ingestion, snapshot, and drift intelligence pipeline.
-
----
-
-## License
-
-TBD
+This project is production-grade at the backend layer
+and under active iteration.

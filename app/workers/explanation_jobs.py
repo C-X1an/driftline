@@ -1,10 +1,14 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
-from app.core.models import RiskAssessment, Explanation, Snapshot
+
+from app.core.models import RiskAssessment, Explanation, Snapshot, Incident
 from app.llm.prompts import PROMPT_V1
 from app.core.explanations.key import compute_explanation_key
 
+import logging
 
+logger = logging.getLogger(__name__)
 
 def generate_explanation(
     db: Session,
@@ -49,7 +53,16 @@ def generate_explanation(
         .filter(Explanation.explanation_key == explanation_key)
         .first()
     )
+
     if existing:
+        logger.info(
+            "metric.explanation.reused",
+            extra={
+                "explanation_key": explanation_key,
+                "risk_assessment_id": assessment.id,
+                "source_id": assessment.drift_signal.source_id,
+            },
+        )
         return existing
 
     prompt = PROMPT_V1.format(
@@ -70,8 +83,43 @@ def generate_explanation(
         prompt_version="v1",
     )
 
+    logger.info(
+        "metric.explanation.generated",
+        extra={
+            "explanation_key": explanation_key,
+            "risk_assessment_id": assessment.id,
+            "source_id": assessment.drift_signal.source_id,
+        },
+    )
+
     db.add(explanation)
+
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        return (
+            db.query(Explanation)
+            .filter(Explanation.explanation_key == explanation_key)
+            .first()
+        )
+
+    incident = (
+        db.query(Incident)
+        .filter(
+            Incident.source_id == assessment.drift_signal.source_id,
+            Incident.drift_fingerprint == assessment.drift_signal.drift_fingerprint,
+            Incident.status != "RESOLVED",
+        )
+        .order_by(Incident.first_seen_at.desc())
+        .first()
+    )
+
+    if incident and incident.explanation_id is None:
+        incident.explanation_id = explanation.id
+
     db.commit()
     db.refresh(explanation)
 
     return explanation
+

@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from app.api.dependencies import get_db
-from app.core.models import Source, Snapshot, Incident, BaselineEvent
+from app.core.models import Source, Snapshot, Incident, BaselineEvent, Explanation
 from app.workers.snapshot_jobs import capture_snapshot
+from app.core.explanations.baseline_key import compute_baseline_change_key
 
 
 
@@ -84,12 +85,48 @@ def reset_baseline(
         incident.resolved_at = now
 
     db.add(
-    BaselineEvent(
-        source_id=source.id,
-        snapshot_id=latest_snapshot.id,
-        triggered_by="API",
+        BaselineEvent(
+            source_id=source.id,
+            snapshot_id=latest_snapshot.id,
+            triggered_by="API",
+        )
     )
-)
+    # 5. Baseline explanation (idempotent)
+    explanation_key = compute_baseline_change_key(
+        source_id=str(source.id),
+    )
+
+    existing_explanation = (
+        db.query(Explanation)
+        .filter(Explanation.explanation_key == explanation_key)
+        .first()
+    )
+
+    if not existing_explanation:
+        prompt = f"""
+A new operational baseline was set for this source.
+
+Previous baseline:
+{previous_baseline.id if previous_baseline else "None"}
+
+New baseline:
+{latest_snapshot.id}
+
+Explain why teams reset baselines, what this implies operationally,
+and what operators should verify after doing so.
+"""
+
+        content = "Baseline reset explanation pending"  # placeholder if no LLM here
+
+        explanation = Explanation(
+            explanation_key=explanation_key,
+            content=content,
+            model="system",
+            prompt_version="baseline_v1",
+        )
+
+        db.add(explanation)
+
     db.commit()
 
     return {

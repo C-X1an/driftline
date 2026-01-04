@@ -6,6 +6,38 @@ from app.core.models import Incident
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
+@router.get("")
+def list_incidents(
+    status: str | None = None,
+    db: Session = Depends(get_db),
+):
+    query = db.query(Incident)
+
+    if status:
+        query = query.filter(Incident.status == status)
+
+    incidents = (
+        query
+        .order_by(Incident.first_seen_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    return [
+        {
+            "id": str(i.id),
+            "status": i.status,
+            "risk_level": i.current_risk_level,
+            "magnitude": i.current_magnitude,
+            "origin": i.origin,
+            "first_seen_at": i.first_seen_at,
+            "last_seen_at": i.last_seen_at,
+            "resolved_at": i.resolved_at,
+            "explanation_id": str(i.explanation_id) if i.explanation_id else None,
+        }
+        for i in incidents
+    ]
+
 
 @router.patch("/{incident_id}/ack")
 def acknowledge_incident(
@@ -30,3 +62,5 @@ def acknowledge_incident(
         "incident_id": incident.id,
         "status": incident.status,
     }
+
+
