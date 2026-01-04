@@ -24,6 +24,18 @@ Driftline models risk.
 
 ---
 
+## What Driftline Is Not
+
+- Not a change summarizer
+- Not a CI or PR bot
+- Not a compliance scanner
+- Not an alerting system
+- Not an AI wrapper
+
+Driftline is intentionally stateful, opinionated, and risk-focused.
+
+---
+
 ## Who Driftline Is For
 
 Driftline is designed for:
@@ -105,7 +117,16 @@ These principles guide every architectural decision in the system.
 
 ---
 
-## Status
+## Project Status
 
-This project is production-grade at the backend layer
-and under active iteration.
+Driftline is production-grade at the backend layer and under active iteration.
+
+Current focus:
+- hardening incident semantics
+- explanation determinism guarantees
+- operational UX via API design
+
+Non-goals (for now):
+- UI dashboards
+- notification integrations
+- automated remediation
