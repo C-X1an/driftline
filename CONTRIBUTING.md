@@ -62,3 +62,52 @@ If behavior is important, it should be testable.
 ---
 
 ## Database & Migrations
+
+- Schema changes must include Alembic migrations
+- Migrations should be reversible where possible
+- Do not modify existing migration files
+
+---
+
+## Tests
+
+If adding behavior that affects:
+- incident lifecycle
+- explanation generation
+- baseline semantics
+
+tests are strongly encouraged.
+
+---
+
+## Documentation
+
+Documentation is a first-class artifact in Driftline.
+
+If a change alters:
+- mental models
+- operator workflows
+- lifecycle semantics
+
+documentation updates are expected.
+
+---
+
+## Submitting Changes
+
+1. Fork the repository
+2. Create a focused branch
+3. Make your changes
+4. Ensure tests pass (where applicable)
+5. Open a pull request with:
+   - clear motivation
+   - explanation of tradeoffs
+   - any relevant design considerations
+
+---
+
+## Final Note
+
+Driftline optimizes for trust, clarity, and long-term operational memory.
+
+If a change makes the system harder to reason about, it is probably not a fit.

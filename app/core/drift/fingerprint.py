@@ -1,21 +1,20 @@
 import hashlib
 import json
+from typing import List, Dict, Any
 
 
-def compute_drift_fingerprint(components: list[dict]) -> str:
+def compute_drift_fingerprint(components: List[Dict[str, Any]]) -> str:
     """
-    Produces a stable hash for semantic drift.
-    Order-independent.
+    Deterministic fingerprint of drift components.
+    Two semantically identical drifts MUST produce the same fingerprint.
     """
-    normalized = [
-        {
-            "path": c["path"],
-            "change_type": c["change_type"],
-        }
-        for c in components
-    ]
 
-    normalized.sort(key=lambda x: (x["path"], x["change_type"]))
+    # Sort components by path for stability
+    canonical = sorted(
+        components,
+        key=lambda c: c.get("path", "")
+    )
 
-    payload = json.dumps(normalized, separators=(",", ":"), sort_keys=True)
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()

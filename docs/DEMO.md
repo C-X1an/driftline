@@ -1,39 +1,116 @@
-# Driftline Demo Walkthrough
+# Driftline Demo
 
-This walkthrough demonstrates how Driftline detects, explains, and manages
-configuration drift over time.
+This demo walks through a complete Driftline lifecycle using a single source.
+
+The goal is to demonstrate how Driftline models configuration drift as
+operational risk over time — not as isolated events.
+
+---
 
 ## Scenario
 
-We start with a system that has a known-good baseline configuration.
+We operate a system with a simple configuration:
 
-## Step 1: Baseline Established
-- A baseline snapshot is captured
+- `port = 8080`
+
+This value represents a documented operational assumption.
+
+---
+
+## Step 1 — Establish a Baseline
+
+We capture a snapshot and mark it as the baseline.
+
+At this point:
+- No drift exists
 - No incidents exist
+- The system is considered stable
 
-## Step 2: Configuration Drift Introduced
-- A configuration value changes
-- Driftline detects divergence
-- A risk assessment is generated
-- An incident is created
+---
 
-## Step 3: Explanation Generated
-- A deterministic explanation is attached
-- Operators can see *why* the drift matters
+## Step 2 — Drift Occurs
 
-## Step 4: Drift Persists
-- Drift continues across time
-- No duplicate explanations are generated
-- Incident remains OPEN
+The system configuration changes:
 
-## Step 5: Baseline Reset
-- Operator resets the baseline
-- Incident is RESOLVED
-- Baseline reset explanation is recorded
+- `port = 8080` → `port = 9090`
 
-## Outcome
+A new snapshot is captured.
 
-Driftline preserved:
-- historical context
-- operator intent
-- reasoning behind decisions
+Driftline compares this snapshot to the baseline and detects drift.
+
+---
+
+## Step 3 — Risk Is Assessed
+
+The drift is evaluated for operational risk.
+
+Because this change affects runtime behavior:
+- Risk level is assessed as HIGH
+- A magnitude is assigned
+
+---
+
+## Step 4 — Incident Is Created
+
+An incident is created with status **OPEN**.
+
+Important properties:
+- The incident persists across time
+- Repeated detections of the same drift do not create new incidents
+- The incident represents an ongoing operational condition
+
+---
+
+## Step 5 — Explanation Is Attached
+
+A deterministic explanation is generated and attached.
+
+The explanation:
+- Describes why the drift matters
+- Is keyed by baseline, drift fingerprint, and risk level
+- Will be reused if the same drift occurs again
+
+---
+
+## Step 6 — Incident Persists
+
+Even if drift is detected repeatedly:
+- No new incident is created
+- The existing incident remains OPEN
+- Historical context is preserved
+
+---
+
+## Step 7 — Baseline Is Reset
+
+An operator explicitly resets the baseline.
+
+This represents intentional acceptance of the new configuration.
+
+Driftline:
+- Captures a new baseline snapshot
+- Resolves all active incidents for the source
+- Records the baseline reset as an operational event
+
+---
+
+## Step 8 — History Is Preserved
+
+After resolution:
+- The incident remains queryable
+- The explanation remains attached
+- Timelines reflect creation, explanation, and resolution
+
+No context is lost.
+
+---
+
+## Why This Matters
+
+Most systems answer:
+> “What changed?”
+
+Driftline answers:
+> “When did this become operational risk, and why?”
+
+This demo represents the core mental model behind Driftline.

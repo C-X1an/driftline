@@ -4,6 +4,10 @@ from app.core.models import Snapshot, SnapshotError, Source
 from app.core.normalization.fingerprint import fingerprint_raw_content
 from app.core.normalization.basic import normalize_content
 from app.ingestion.registry import FETCHER_REGISTRY
+from app.core.diffing.structured_diff import diff_structured
+from app.workers.drift_emitter import emit_drift_signal
+
+
 
 
 SCHEMA_VERSION = 1
@@ -34,15 +38,24 @@ def capture_snapshot(db: Session, source: Source) -> None:
 
         normalized = normalize_content(raw_content)
 
+        diff = None
+        if last_snapshot:
+            diff = diff_structured(
+                last_snapshot.normalized_state.get("value"),
+                normalized.get("value"),
+            )
+
         snapshot = Snapshot(
             source_id=source.id,
             raw_fingerprint=fingerprint,
             normalized_state=normalized,
+            diff=diff,
             schema_version=SCHEMA_VERSION,
         )
 
         db.add(snapshot)
         db.commit()
+        emit_drift_signal(db, snapshot)
 
     except Exception as e:
         error = SnapshotError(

@@ -38,4 +38,10 @@ class Snapshot(Base):
 
     raw_fingerprint: Mapped[str] = mapped_column(String, nullable=False)
     normalized_state: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+    diff: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+    
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
