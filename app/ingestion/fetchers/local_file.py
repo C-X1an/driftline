@@ -18,4 +18,5 @@ def fetch_local_file(fetch_spec: dict) -> str:
     if not file_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 
-    return file_path.read_text(encoding="utf-8")
+    content = file_path.read_text(encoding="utf-8")
+    return content

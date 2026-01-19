@@ -1,2 +1,5 @@
-port: wassup
-debug: false
+port: 9090
+debug: true
+alpha: two
+beta: enabled
+gamma: 123

@@ -14,15 +14,21 @@ SCHEMA_VERSION = 1
 
 
 def capture_snapshot(db: Session, source: Source) -> None:
+    print("🔥 ENTER capture_snapshot for source", source.id)
+
     try:
         fetcher_type = source.fetch_spec.get("type")
         fetcher = FETCHER_REGISTRY.get(fetcher_type)
 
         if not fetcher:
+            print(f"🔥 CRITICAL: Unsupported fetcher type: {fetcher_type}")
             raise ValueError(f"Unsupported fetcher type: {fetcher_type}")
 
         raw_content = fetcher(source.fetch_spec)
+        print("🔥 DEBUG RAW CONTENT READ:\n", raw_content)
+
         fingerprint = fingerprint_raw_content(raw_content)
+        print("🔥 DEBUG FINGERPRINT:", fingerprint)
 
         # Check last snapshot
         last_snapshot = (
@@ -55,6 +61,8 @@ def capture_snapshot(db: Session, source: Source) -> None:
 
         db.add(snapshot)
         db.commit()
+        print("🔥 Calling emit_drift_signal...")
+
         emit_drift_signal(db, snapshot)
 
     except Exception as e:

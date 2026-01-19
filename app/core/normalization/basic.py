@@ -26,7 +26,8 @@ def normalize_content(raw: Any) -> dict:
             pass
 
         try:
-            return {"type": "yaml", "value": yaml.safe_load(stripped)}
+            parsed = yaml.safe_load(stripped)
+            return {"type": "yaml", "value": parsed}
         except Exception:
             pass
 

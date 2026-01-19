@@ -6,6 +6,10 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.core.models.org import Org
 
 
 class Incident(Base):
@@ -76,8 +80,27 @@ class Incident(Base):
         nullable=False,
     )
 
-    explanation_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("explanations.id"),
+    last_explained_tier: Mapped[str | None] = mapped_column(
+        String,
         nullable=True,
     )
+    
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("orgs.id"),
+        nullable=False,
+        index=True,
+    )
+
+    org: Mapped["Org"] = relationship(
+        "Org",
+        back_populates="incidents",
+        foreign_keys=[org_id],
+    )
+    
+    explanations: Mapped[list["Explanation"]] = relationship(
+        "Explanation",
+        back_populates="incident",
+        order_by="Explanation.created_at",
+    )
+

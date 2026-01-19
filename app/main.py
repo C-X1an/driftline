@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.routers import sources, status, incidents, metrics
+from app.api.routers import sources, status, incidents, metrics, workspaces
 from app.api.incidents import router as incidents_router
 
 
@@ -11,9 +11,9 @@ app = FastAPI(
 
 app.include_router(sources.router)
 app.include_router(status.router)
-app.include_router(incidents.router)
 app.include_router(incidents_router)
 app.include_router(metrics.router)
+app.include_router(workspaces.router)
 
 
 @app.get("/health")

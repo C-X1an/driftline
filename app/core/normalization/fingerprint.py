@@ -19,8 +19,7 @@ def _canonicalize(raw: Any) -> str:
 
 
 def fingerprint_raw_content(raw: Any) -> str:
-    """
-    Deterministic fingerprint of raw content.
-    """
     canonical = _canonicalize(raw)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    print("🔥 DEBUG CANONICAL RAW:", repr(canonical))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+

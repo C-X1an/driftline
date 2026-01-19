@@ -1,10 +1,14 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 
 
-from app.core.models import RiskAssessment, Explanation, Snapshot, Incident
+from app.core.models import RiskAssessment, Snapshot, Incident, Explanation
+from app.core.explanations.engine import generate_explanation as create_explanation
 from app.llm.prompts import PROMPT_V1
+from app.core.config import DEBUG_PIPELINE
 from app.core.explanations.key import compute_explanation_key
+from app.core.models.usage_event import UsageEvent
 
 import logging
 
@@ -13,57 +17,72 @@ logger = logging.getLogger(__name__)
 def generate_explanation(
     db: Session,
     assessment: RiskAssessment,
+    incident: Incident,
     llm_client,
 ):
-    baseline_snapshot = (
-        db.query(Snapshot)
-        .filter(
-            Snapshot.source_id == assessment.drift_signal.source_id,
-            Snapshot.is_baseline.is_(True),
+    if DEBUG_PIPELINE:
+        print("🔥 assessment.id =", assessment.id)
+        print("🔥 incident.id =", incident.id)
+
+    try:
+        baseline_snapshot = (
+            db.query(Snapshot)
+            .filter(
+                Snapshot.source_id == assessment.drift_signal.source_id,
+                Snapshot.is_baseline.is_(True),
+            )
+            .first()
         )
-        .first()
-    )
+    except Exception as e:
+        print("❌ EXCEPTION querying baseline_snapshot:", repr(e))
+        raise
 
     if not baseline_snapshot:
-        # Safety guard: no explanation without a baseline
         return None
-    
-    baseline_state = baseline_snapshot.normalized_state.get("value", {})
-    current_snapshot = (
-        db.query(Snapshot)
-        .filter(Snapshot.id == assessment.drift_signal.current_snapshot_id)
-        .first()
-    )
+
+    try:
+        current_snapshot = (
+            db.query(Snapshot)
+            .filter(Snapshot.id == assessment.drift_signal.current_snapshot_id)
+            .first()
+        )
+    except Exception as e:
+        print("❌ EXCEPTION querying current_snapshot:", repr(e))
+        raise
 
     if not current_snapshot:
-        # Safety guard: signal exists but snapshot missing
         return None
 
+    baseline_state = baseline_snapshot.normalized_state.get("value", {})
     current_state = current_snapshot.normalized_state.get("value", {})
 
-    explanation_key = compute_explanation_key(
-        baseline_snapshot_id=str(baseline_snapshot.id),
-        drift_fingerprint=assessment.drift_signal.drift_fingerprint,
-        risk_level=assessment.risk_level,
+    explanation_key = compute_explanation_key(str(incident.id))
+
+    next_version = 1
+
+    # 2. Idempotency guard (same version)
+    max_version = (
+        db.query(func.max(Explanation.version))
+        .filter(Explanation.explanation_key == explanation_key)
+        .scalar()
     )
 
-    # Check cache (IMPORTANT)
+    next_version = 1 if max_version is None else max_version + 1
+
     existing = (
         db.query(Explanation)
-        .filter(Explanation.explanation_key == explanation_key)
+        .filter(
+            Explanation.explanation_key == explanation_key,
+            Explanation.version == next_version,
+        )
         .first()
     )
 
     if existing:
-        logger.info(
-            "metric.explanation.reused",
-            extra={
-                "explanation_key": explanation_key,
-                "risk_assessment_id": assessment.id,
-                "source_id": assessment.drift_signal.source_id,
-            },
-        )
+        if DEBUG_PIPELINE:
+            print("🔥 Explanation version already exists, skipping")
         return existing
+
 
     prompt = PROMPT_V1.format(
         risk_level=assessment.risk_level,
@@ -73,53 +92,66 @@ def generate_explanation(
         current_state=current_state,
     )
 
-    content = llm_client.generate(prompt)
+    try:
+        content = llm_client.generate(prompt)
+    except Exception as e:
+        print("❌ EXCEPTION during LLM generation:", repr(e))
+        raise
 
-    explanation = Explanation(
-        risk_assessment_id=assessment.id,
-        explanation_key=explanation_key,
-        content=content,
-        model=llm_client.model_name,
-        prompt_version="v1",
+    if DEBUG_PIPELINE:
+        print("🔥 explanation_key =", explanation_key)
+        print("🔥 next_version =", next_version)
+
+    try:
+        explanation = create_explanation(
+            db=db,
+            assessment=assessment,
+            content=content,
+            model=llm_client.model_name,
+            prompt_version="v1",
+            explanation_key=explanation_key,
+            version=next_version,
+            incident_id=incident.id,
+        )
+        incident.last_explained_tier = risk_tier(assessment.magnitude)
+        db.add(incident)
+    except Exception as e:
+        print("❌ EXCEPTION during explanation insert:", repr(e))
+        raise
+
+    if incident.org.plan != "FREE":
+        usage_event = UsageEvent(
+            org_id=incident.org_id,
+            event_type="EXPLANATION_GENERATED",
+            quantity=1,
+        )
+        db.add(usage_event)
+
+    db.commit()
+
+    if DEBUG_PIPELINE:
+        print("🔥 EXPLANATION CREATED, id =", explanation.id)
+
+    logger.info(
+        "billing.explanation.generated",
+        extra={
+            "org_id": incident.org_id,
+            "incident_id": incident.id,
+            "explanation_version": next_version,
+            "risk_tier": risk_tier(assessment.magnitude),
+        },
     )
 
     logger.info(
         "metric.explanation.generated",
         extra={
             "explanation_key": explanation_key,
+            "version": next_version,
             "risk_assessment_id": assessment.id,
             "source_id": assessment.drift_signal.source_id,
         },
     )
 
-    db.add(explanation)
-
-    try:
-        db.flush()
-    except IntegrityError:
-        db.rollback()
-        return (
-            db.query(Explanation)
-            .filter(Explanation.explanation_key == explanation_key)
-            .first()
-        )
-
-    incident = (
-        db.query(Incident)
-        .filter(
-            Incident.source_id == assessment.drift_signal.source_id,
-            Incident.drift_fingerprint == assessment.drift_signal.drift_fingerprint,
-            Incident.status != "RESOLVED",
-        )
-        .order_by(Incident.first_seen_at.desc())
-        .first()
-    )
-
-    if incident and incident.explanation_id is None:
-        incident.explanation_id = explanation.id
-
-    db.commit()
-    db.refresh(explanation)
-
     return explanation
+
 

@@ -6,10 +6,11 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     String,
-    UniqueConstraint,   # ← ADD THIS
+    UniqueConstraint,   
+    Integer,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -18,7 +19,11 @@ class Explanation(Base):
     __tablename__ = "explanations"
 
     __table_args__ = (
-        UniqueConstraint("explanation_key", name="uq_explanations_explanation_key"),
+        UniqueConstraint(
+            "explanation_key",
+            "version",
+            name="uq_explanations_key_version",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -50,4 +55,17 @@ class Explanation(Base):
         nullable=False,
         index=True,
     )
+
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    incident_id: Mapped[UUID] = mapped_column(
+        ForeignKey("incidents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    incident: Mapped["Incident"] = relationship(
+        "Incident",
+        back_populates="explanations",
+    )
+
 

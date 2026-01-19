@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from app.api.dependencies import get_db
-from app.core.models import Source, Snapshot, Incident, BaselineEvent, Explanation
+from app.core.models import Source, Snapshot, Incident, Explanation
 from app.workers.snapshot_jobs import capture_snapshot
 from app.core.explanations.baseline_key import compute_baseline_change_key
+from app.core.explanations.engine import generate_explanation as create_explanation
 
 
 
@@ -25,6 +26,44 @@ def list_sources(db: Session = Depends(get_db)):
         }
         for source in sources
     ]
+
+@router.post("/")
+def create_source(
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    name = payload.get("name")
+    source_type = payload.get("type")
+    workspace_id = payload.get("workspace_id")
+    fetch_spec = payload.get("fetch_spec")
+    normalization_profile = payload.get("normalization_profile", "default")
+
+    if not name or not source_type or not workspace_id or not fetch_spec:
+        raise HTTPException(
+            status_code=400,
+            detail="name, type, workspace_id, fetch_spec are required",
+        )
+
+    source = Source(
+        name=name,
+        type=source_type,
+        workspace_id=workspace_id,
+        fetch_spec=fetch_spec,
+        normalization_profile=normalization_profile,
+        active=True,
+    )
+
+    db.add(source)
+    db.commit()
+    db.refresh(source)
+
+    return {
+        "id": str(source.id),
+        "name": source.name,
+        "type": source.type,
+        "workspace_id": str(source.workspace_id),
+        "active": source.active,
+    }
 
 @router.post("/{source_id}/reset-baseline")
 def reset_baseline(
@@ -84,13 +123,6 @@ def reset_baseline(
         incident.status = "RESOLVED"
         incident.resolved_at = now
 
-    db.add(
-        BaselineEvent(
-            source_id=source.id,
-            snapshot_id=latest_snapshot.id,
-            triggered_by="API",
-        )
-    )
     # 5. Baseline explanation (idempotent)
     explanation_key = compute_baseline_change_key(
         source_id=str(source.id),
@@ -103,7 +135,7 @@ def reset_baseline(
     )
 
     if not existing_explanation:
-        prompt = f"""
+        content = f"""
 A new operational baseline was set for this source.
 
 Previous baseline:
@@ -116,26 +148,23 @@ Explain why teams reset baselines, what this implies operationally,
 and what operators should verify after doing so.
 """
 
-        content = "Baseline reset explanation pending"  # placeholder if no LLM here
-
-        explanation = Explanation(
-            explanation_key=explanation_key,
-            content=content,
+        create_explanation(
+            db=db,
+            assessment=None,
+            content=content.strip(),
             model="system",
             prompt_version="baseline_v1",
+            explanation_key=explanation_key,
         )
-
-        db.add(explanation)
 
     db.commit()
 
     return {
-        "source_id": source.id,
-        "baseline_snapshot_id": latest_snapshot.id,
+        "source_id": str(source.id),
+        "baseline_snapshot_id": str(latest_snapshot.id),
         "previous_baseline_snapshot_id": (
-            previous_baseline.id if previous_baseline else None
+            str(previous_baseline.id) if previous_baseline else None
         ),
         "resolved_incidents": len(active_incidents),
         "message": "Baseline reset successfully",
     }
-

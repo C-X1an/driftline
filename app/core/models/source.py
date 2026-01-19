@@ -4,9 +4,15 @@ from typing import Literal
 
 from sqlalchemy import String, DateTime, Boolean, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.core.models.org import Org
+
 
 
 SourceType = Literal["CONFIG", "DOC"]
@@ -45,3 +51,11 @@ class Source(Base):
         nullable=True,
         index=True,
     )
+
+    org_id: Mapped[UUID] = mapped_column(
+        ForeignKey("orgs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    org: Mapped["Org"] = relationship("Org", back_populates="sources")
+

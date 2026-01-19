@@ -49,6 +49,14 @@ No implicit behavior is allowed.
 
 All state transitions must be safe to repeat.
 
-No duplicate incidents.
-No duplicate explanations.
-No duplicate baseline events.
+No duplicate incidents.  
+No duplicate explanations.  
+No duplicate baseline transitions.
+
+Baseline transitions are defined by:
+- snapshot.is_baseline flag changes
+- baseline explanation keyed by baseline_change_key
+
+Repeating a baseline reset must not create:
+- multiple active baselines
+- duplicate baseline explanations

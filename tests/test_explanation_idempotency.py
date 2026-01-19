@@ -1,55 +1,96 @@
-import pytest
+import uuid
 from sqlalchemy.orm import Session
 
-from app.core.models import Source, Snapshot, Incident, Explanation
+from app.core.models import Workspace, Source, Snapshot, Explanation
 from app.workers.snapshot_jobs import capture_snapshot
-from app.workers.explanation_jobs import generate_explanation_for_incident
+from app.ingestion.registry import FETCHER_REGISTRY
+from app.workers.explanation_jobs import generate_explanation
+from app.core.models import RiskAssessment
+from app.llm.mock import MockLLMClient
 
 
-def test_explanation_is_reused_for_identical_drift(db_session: Session):
+def test_explanation_is_reused_for_identical_drift(db: Session):
     """
-    Invariant: Identical drift conditions must reuse the same explanation.
+    Invariant:
+    Identical drift conditions MUST reuse the same explanation.
+    No duplicate explanation rows allowed.
     """
 
-    # 1. Create source
-    source = Source(name="test-source")
-    db_session.add(source)
-    db_session.commit()
+    # --- Arrange workspace + source ---
+    workspace = Workspace(
+        id=uuid.uuid4(),
+        name="test-workspace",
+    )
+    db.add(workspace)
+    db.commit()
 
-    # 2. Capture baseline snapshot
-    baseline_snapshot = capture_snapshot(db_session, source.id)
-    source.baseline_snapshot_id = baseline_snapshot.id
-    db_session.commit()
+    source = Source(
+        id=uuid.uuid4(),
+        workspace_id=workspace.id,
+        name="test-source",
+        type="mock",
+        active=True,
+        fetch_spec={"type": "test_fetcher"},
+        normalization_profile="default",
+    )
+    db.add(source)
+    db.commit()
 
-    # 3. Introduce drift
-    # TODO: mutate system state here in the same way twice
+    # --- Mutable state for fetcher ---
+    state = {"port": "1234"}
 
-    # 4. Capture drift snapshot
-    drift_snapshot_1 = capture_snapshot(db_session, source.id)
+    def test_fetcher(_spec):
+        return state
 
-    # 5. Trigger incident + explanation
-    incident_1 = db_session.query(Incident).filter_by(source_id=source.id).first()
-    explanation_1 = db_session.query(Explanation).first()
+    FETCHER_REGISTRY["test_fetcher"] = test_fetcher
 
-    # 6. Resolve incident
-    incident_1.status = "RESOLVED"
-    db_session.commit()
+    llm_client = MockLLMClient()
 
-    # 7. Re-introduce identical drift
-    # TODO: same mutation again
+    # --- 1. Capture baseline ---
+    capture_snapshot(db, source)
 
-    # 8. Capture second drift snapshot
-    drift_snapshot_2 = capture_snapshot(db_session, source.id)
+    baseline_snapshot = (
+        db.query(Snapshot)
+        .filter(Snapshot.source_id == source.id)
+        .order_by(Snapshot.captured_at.desc())
+        .first()
+    )
+    baseline_snapshot.is_baseline = True
+    db.commit()
 
-    # 9. Trigger second incident
-    incident_2 = db_session.query(Incident).filter(
-        Incident.source_id == source.id,
-        Incident.id != incident_1.id
-    ).first()
+    # --- 2. Introduce drift ---
+    state["port"] = "5678"
+    capture_snapshot(db, source)
 
-    explanation_2 = db_session.query(Explanation).filter(
-        Explanation.id == incident_2.explanation_id
-    ).first()
+    # At this point:
+    # drift_emitter should have created DriftSignal + Incident + RiskAssessment
 
-    # 10. Assertions
-    assert explanation_1.id == explanation_2.id, "Explanation should be reused, not regenerated"
+    assessment = db.query(RiskAssessment).first()
+    assert assessment is not None, "RiskAssessment not created"
+
+    explanation_1 = generate_explanation(db, assessment, llm_client)
+    assert explanation_1 is not None
+
+    explanation_count_after_first = db.query(Explanation).count()
+
+    # --- 3. Resolve drift (back to baseline) ---
+    state["port"] = "1234"
+    capture_snapshot(db, source)
+
+    # --- 4. Re-introduce IDENTICAL drift ---
+    state["port"] = "5678"
+    capture_snapshot(db, source)
+
+    assessment_2 = (
+        db.query(RiskAssessment)
+        .order_by(RiskAssessment.created_at.desc())
+        .first()
+    )
+
+    explanation_2 = generate_explanation(db, assessment_2, llm_client)
+
+    explanation_count_after_second = db.query(Explanation).count()
+
+    # --- Assertions ---
+    assert explanation_1.id == explanation_2.id, "Explanation was regenerated instead of reused"
+    assert explanation_count_after_first == explanation_count_after_second, "Duplicate explanation row created"

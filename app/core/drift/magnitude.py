@@ -3,19 +3,20 @@ from typing import List, Dict, Any
 
 def compute_drift_magnitude(
     components: List[Dict[str, Any]],
-    baseline_state: dict,
+    baseline_state: Dict[str, Any],
 ) -> float:
     """
-    Compute normalized drift magnitude in range [0.0, 1.0+]
+    Compute normalized drift magnitude.
+    Magnitude is relative to baseline size (fixed reference).
     """
 
     if not components:
         return 0.0
 
-    # Base weight: number of changed components
+    # 1. Each changed component counts as 1
     count_weight = len(components)
 
-    # Depth weight: deeper paths are more significant
+    # 2. Depth penalty (nested changes are riskier)
     depth_weight = 0
     for c in components:
         path = c.get("path", "")
@@ -24,21 +25,18 @@ def compute_drift_magnitude(
 
     raw_score = count_weight + (0.5 * depth_weight)
 
-    # Normalize relative to baseline size if possible
+    # 🔥 CRITICAL: baseline size must be frozen reference
     baseline_size = _estimate_structure_size(baseline_state)
 
-    if baseline_size > 0:
-        magnitude = raw_score / baseline_size
-    else:
-        magnitude = raw_score
+    if baseline_size <= 0:
+        return round(float(raw_score), 4)
+
+    magnitude = raw_score / baseline_size
 
     return round(float(magnitude), 4)
 
 
 def _estimate_structure_size(obj) -> int:
-    """
-    Rough size estimate for normalization.
-    """
     if isinstance(obj, dict):
         return sum(_estimate_structure_size(v) for v in obj.values()) + len(obj)
     if isinstance(obj, list):

@@ -1,13 +1,8 @@
 from sqlalchemy.orm import Session
+from app.core.models import Snapshot
 
-from app.core.models import Snapshot, Source
 
-
-def get_baseline_snapshot(db, source_id):
-    source = db.query(Source).filter(Source.id == source_id).first()
-    if not source or not source.monitoring_started_at:
-        return None
-
+def get_baseline_snapshot(db: Session, source_id):
     return (
         db.query(Snapshot)
         .filter(
@@ -16,5 +11,3 @@ def get_baseline_snapshot(db, source_id):
         )
         .first()
     )
-
-
