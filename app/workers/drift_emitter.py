@@ -104,17 +104,18 @@ def emit_drift_signal(db: Session, snapshot: Snapshot) -> DriftSignal | None:
     # attach previous magnitude for policy decision
     incident._prev_magnitude = prev_magnitude
 
-    allowed = should_generate_explanation(db, assessment, incident)
+    decision = should_generate_explanation(db, assessment, incident)
 
-    if allowed:
-        if DEBUG_PIPELINE:
-            print("🔥 DEBUG: Calling generate_explanation")
-            print("🔥 ENTERING generate_explanation()")
-        client = get_llm_client()   # 🔥 REQUIRED
+    if decision.allowed:
+        client = get_llm_client()
         generate_explanation(db, assessment, incident, client)
     else:
         if DEBUG_PIPELINE:
-            print("🚫 DEBUG: Explanation generation blocked by policy")
+            print(
+                "🚫 Explanation blocked:",
+                decision.reason,
+            )
+
     if DEBUG_PIPELINE:
         print("🔥🔥🔥 EXIT emit_drift_signal BOTTOM OF FUNCTION")
     return signal

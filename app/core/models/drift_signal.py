@@ -42,6 +42,7 @@ class DriftSignal(Base):
     )
 
     component_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    
     magnitude: Mapped[float] = mapped_column(Float, nullable=False)
 
     components: Mapped[list] = mapped_column(JSONB, nullable=False)

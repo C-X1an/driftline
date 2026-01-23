@@ -9,6 +9,7 @@ from app.llm.prompts import PROMPT_V1
 from app.core.config import DEBUG_PIPELINE
 from app.core.explanations.key import compute_explanation_key
 from app.core.models.usage_event import UsageEvent
+from app.core.risk.tiers import risk_tier
 
 import logging
 

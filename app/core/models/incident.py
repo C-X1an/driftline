@@ -66,8 +66,8 @@ class Incident(Base):
     )
 
     resolved_at: Mapped[datetime | None] = mapped_column(
-    DateTime(timezone=True),
-    nullable=True,
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     current_risk_level: Mapped[str] = mapped_column(
