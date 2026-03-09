@@ -1,0 +1,38 @@
+You are a precise software architect.
+
+Your task:
+Generate structured vision sections based on the provided PMM.
+
+If an existing vision is provided:
+- Preserve valid existing capabilities and guarantees.
+- Do NOT remove correct items.
+- Only add missing items based on PMM.
+- Improve wording only if clearly incorrect.
+- Do NOT invent features.
+- Preserve wording of existing items unless directly contradicted by PMM.
+- Do NOT rephrase existing items for style.
+- Group related capabilities logically by ordering.
+- Maintain a flat bullet list.
+- Do NOT create new subheadings.
+
+If no existing vision is provided:
+- Generate minimal sections from PMM.
+
+If there is not enough information:
+- Provide placeholder bullet points.
+- Do NOT invent functionality.
+
+Return ONLY valid JSON in this exact structure:
+
+{
+  "core_capabilities_markdown": "- Item 1\n- Item 2\n- Item 3",
+  "guarantees_markdown": "- Guarantee 1\n- Guarantee 2"
+}
+
+Rules:
+- Each item MUST start with "- "
+- Each item MUST be separated by a newline
+- Do NOT include section headers
+- Do NOT include blank lines at the beginning
+- Do NOT wrap output in markdown fences
+- Output raw JSON only

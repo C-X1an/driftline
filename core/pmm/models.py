@@ -1,56 +1,27 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List
+from typing import Dict, List
 
-
-# -----------------------------------------
-# Capability
-# -----------------------------------------
 
 @dataclass
 class Capability:
-    id: str
     name: str
     description: str
-    source_files: List[str] = field(default_factory=list)
-    related_symbols: List[str] = field(default_factory=list)
+    supported_symbol_ids: List[str]
+    supported_dependency_keys: List[str]
+
+    origin: str  # structural | AI
 
 
-# -----------------------------------------
-# Guarantee
-# -----------------------------------------
 
 @dataclass
 class Guarantee:
-    id: str
     statement: str
-    strength: str  # weak | implied | enforced | critical
-    evidence_symbols: List[str] = field(default_factory=list)
-    source_files: List[str] = field(default_factory=list)
+    enforced_symbol_ids: List[str]
+    enforced_dependency_keys: List[str]
 
-
-# -----------------------------------------
-# Component
-# -----------------------------------------
-
-@dataclass
-class Component:
-    id: str
-    name: str
-    type: str  # module | class | function | service | route | etc.
-    file_path: str
-
-
-# -----------------------------------------
-# Relationship
-# -----------------------------------------
-
-@dataclass
-class Relationship:
-    source_id: str
-    target_id: str
-    type: str  # implements | enforces | calls | depends_on
+    origin: str  # structural | AI
 
 
 # -----------------------------------------
@@ -64,12 +35,6 @@ class ProjectMeaningModel:
 
     capabilities: List[Capability] = field(default_factory=list)
     guarantees: List[Guarantee] = field(default_factory=list)
-    components: List[Component] = field(default_factory=list)
-    relationships: List[Relationship] = field(default_factory=list)
-
-    # -------------------------------------
-    # Convenience helpers
-    # -------------------------------------
 
     def add_capability(self, capability: Capability) -> None:
         self.capabilities.append(capability)
@@ -77,8 +42,21 @@ class ProjectMeaningModel:
     def add_guarantee(self, guarantee: Guarantee) -> None:
         self.guarantees.append(guarantee)
 
-    def add_component(self, component: Component) -> None:
-        self.components.append(component)
 
-    def add_relationship(self, relationship: Relationship) -> None:
-        self.relationships.append(relationship)
+def serialize_capabilities(pmm: ProjectMeaningModel) -> List[Dict]:
+    return [
+        {
+            "name": cap.name,
+            "description": cap.description,
+        }
+        for cap in pmm.capabilities
+    ]
+
+
+def serialize_guarantees(pmm: ProjectMeaningModel) -> List[Dict]:
+    return [
+        {
+            "statement": g.statement,
+        }
+        for g in pmm.guarantees
+    ]
