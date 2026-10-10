@@ -21,6 +21,12 @@ PARSERS: List[LanguageParser] = [
     PythonParser(),
 ]
 
+# Apply these even with missing or invalid user configuration.
+BUILTIN_IGNORED_PARTS = {
+    ".git", ".driftline", "node_modules", ".venv", "venv",
+    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+}
+
 
 # =========================================================
 # Helpers
@@ -30,6 +36,8 @@ def _is_ignored(path: Path, ignore_patterns: List[str]) -> bool:
     """
     Check whether a file path matches any ignore glob pattern.
     """
+    if any(part in BUILTIN_IGNORED_PARTS or part.startswith(".env") for part in path.parts):
+        return True
     for pattern in ignore_patterns:
         if path.match(pattern):
             return True

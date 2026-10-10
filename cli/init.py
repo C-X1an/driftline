@@ -95,9 +95,6 @@ def init():
     print("[cyan]Scanning repository...[/cyan]")
     structural_graph = scan_repository()
 
-    print("DEBUG SYMBOL COUNT:", len(structural_graph.symbols))
-    print("DEBUG DEP COUNT:", len(structural_graph.dependencies))
-
     print("[cyan]Building PMM...[/cyan]")
     existing_vision_text = ""
     if vision_path.exists():
@@ -106,9 +103,6 @@ def init():
     print("[yellow]Analyzing repository. This may take up to a minute depending on project size...[/yellow]")
 
     pmm = build_pmm(structural_graph, existing_vision_text)
-
-    print("DEBUG PMM CAPABILITIES:", pmm.capabilities)
-    print("DEBUG PMM GUARANTEES:", pmm.guarantees)
 
     payload = {
         "existing_vision": existing_vision_text,
@@ -132,8 +126,6 @@ def init():
 
     generated_sections = result.get("text")
 
-    print("DEBUG AI RAW OUTPUT:", result.get("text"))
-
     if not isinstance(generated_sections, dict):
         print("[red]AI output invalid. Vision not modified.[/red]")
         return
@@ -144,7 +136,7 @@ def init():
         if new_vision.strip() == existing_vision_text.strip():
             print("[green]Vision already aligned with PMM.[/green]")
             return
-        
+
         driftline_dir = get_driftline_dir()
         tmp_dir = driftline_dir / "tmp"
         tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -154,4 +146,4 @@ def init():
 
         launch_diff(vision_path, proposed_path)
 
-        
+

@@ -81,21 +81,25 @@ def _validate_response(response: dict, original_vision: str) -> dict:
             "proposed_vision": original_vision,
         }
     
-    if not isinstance(response["missing_vision_items"], list):
-        response["missing_vision_items"] = []
+    status = response["status"]
+    valid = (
+        isinstance(status, str) and status in {"aligned", "drifted"}
+        and all(isinstance(response[key], list) for key in
+                ["missing_vision_items", "new_pmm_items", "contradictions"])
+        and isinstance(response["summary"], str)
+        and isinstance(response["proposed_vision"], str)
+    )
+    if not valid:
+        return {
+            "status": "drifted",
+            "missing_vision_items": [],
+            "new_pmm_items": [],
+            "contradictions": [],
+            "summary": "Drift response has invalid field types or status.",
+            "proposed_vision": original_vision,
+        }
 
-    if not isinstance(response["new_pmm_items"], list):
-        response["new_pmm_items"] = []
-
-    if not isinstance(response["contradictions"], list):
-        response["contradictions"] = []
-
-    if not isinstance(response["proposed_vision"], str):
-        response["proposed_vision"] = original_vision
-
-    # Enforce binary classification
-    if response["status"] not in {"aligned", "drifted"}:
-        response["status"] = "drifted"
+    response = dict(response)
 
     # If aligned, proposed vision must equal original
     if response["status"] == "aligned":
