@@ -217,10 +217,7 @@ def run_reasoning(prompt: str) -> dict:
         parsed = normalize_json_output(raw_text)
 
     if parsed is None:
-        raise RuntimeError(
-            "AI returned invalid JSON. Please retry."
-            f"DEBUG AI RAW OUTPUT:{raw_text}"
-        )
+        raise RuntimeError("AI returned invalid JSON. Please retry.")
 
     return {
         "text": parsed,

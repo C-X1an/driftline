@@ -30,6 +30,8 @@ class DriftlineConfig:
     def __post_init__(self):
         if self.ignore_paths is None:
             self.ignore_paths = []
+        elif not isinstance(self.ignore_paths, list) or not all(isinstance(item, str) for item in self.ignore_paths):
+            raise ValueError("ignore_paths must be a list of glob strings")
 
 
 # ---------------------------------------------------------

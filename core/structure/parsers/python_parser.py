@@ -89,7 +89,7 @@ class PythonParser:
             # ---------------------------------------------
             # Functions
             # ---------------------------------------------
-            elif isinstance(node, ast.FunctionDef):
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
 
                 fn_id = f"{file_path}::{node.name}"
 

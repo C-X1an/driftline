@@ -108,7 +108,15 @@ def load_vision() -> VisionLoadResult:
             status=VisionStatus.EMPTY,
             path=path,
             raw_text=None,
-            needs_clarification=False,
+            needs_clarification=True,
+        )
+
+    if not raw_text.strip():
+        return VisionLoadResult(
+            status=VisionStatus.EMPTY,
+            path=path,
+            raw_text=raw_text,
+            needs_clarification=True,
         )
 
     # -----------------------------------------------------
